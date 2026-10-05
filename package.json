@@ -1,0 +1,16 @@
+{
+  "name": "monedero-andino",
+  "version": "1.3.0",
+  "private": true,
+  "description": "API de la billetera digital Monedero Andino",
+  "main": "src/handler.js",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "lodash": "4.17.20"
+  }
+}
