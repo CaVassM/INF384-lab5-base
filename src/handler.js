@@ -1,5 +1,6 @@
 const { crearMonedero } = require('./wallet');
 const { generarComprobante } = require('./comprobantes');
+const { registrarComercio } = require('./notificaciones');
 const paquete = require('../package.json');
 
 const monedero = crearMonedero();
@@ -47,6 +48,14 @@ async function handler(evento) {
     if (!resultado.ok) return responder(resultado.codigo, { error: resultado.error });
     const comprobante = generarComprobante(resultado.movimiento);
     return responder(200, { movimiento: resultado.movimiento, comprobante: comprobante.clave });
+  }
+
+  if (metodo === 'POST' && ruta === '/comercios/notificacion') {
+    const cuerpo = leerCuerpo(evento);
+    if (!cuerpo) return responder(400, { error: 'cuerpo invalido' });
+    const resultado = registrarComercio(cuerpo.comercio, cuerpo.url);
+    if (!resultado.ok) return responder(400, { error: resultado.error });
+    return responder(201, resultado);
   }
 
   return responder(404, { error: 'ruta inexistente' });
