@@ -11,7 +11,6 @@ API de la billetera digital Monedero Andino. Repositorio base del Laboratorio 5 
 | `infra/` | Infraestructura en Terraform. |
 | `.github/workflows/ci.yml` | Pipeline. |
 | `DECISIONES.md` | Entregable del equipo. |
-| `individual/` | Entregable de cada integrante. |
 
 ## Uso en el laboratorio
 
