@@ -2,7 +2,7 @@
 
 ## Equipo
 
-Número de equipo:
+Número de equipo: 5
 
 | Código PUCP | Nombre | Rol | Usuario de GitHub |
 |---|---|---|---|
@@ -52,7 +52,7 @@ Existe riesgo de exposición de información financiera de los usuarios.
 2. **De proceso — presión de plazo sin camino alternativo.** El plazo de entrega (penalidad contractual por cada día de retraso) no tenía un procedimiento para pedir ayuda cuando faltaba un dato (el ID de la cuenta del proveedor) ni para escalar el cambio a alguien con experiencia en Terraform. El único integrante con experiencia en Terraform estaba de vacaciones y ningún desarrollador había modificado `infra/` antes. La misma presión reaparece hoy: el proveedor exige acceso y cobra S/ 15 000 por día, y el riesgo es repetir el atajo.
 3. **De pipeline — ningún control automático revisa `infra/`.** El pipeline `ci` solo ejecuta las pruebas unitarias y no analiza `infra/` ni las dependencias. Un escáner de infraestructura como código habría detenido un bucket público antes del `apply`.
 4. **De plataforma — el despliegue de infraestructura es manual.** `terraform apply` se ejecuta a mano desde la laptop de quien hace el cambio, sin pasar por el pipeline ni por una revisión previa.
-5. **De detección — no hay monitoreo de la configuración del bucket ni registros de acceso.** Por eso la exposición no generó alertas durante 62 h 20 min, y hoy no hay forma de saber qué se descargó.
+5. **De detección — no hay monitoreo de la configuración del bucket ni registros de acceso.** Por eso la exposición no generó alertas durante 63 h 25 min, y hoy no hay forma de saber qué se descargó.
 6. **De diseño — las claves de los comprobantes son predecibles.** Un número correlativo en la ruta del objeto convirtió un bucket abierto en un recorrido trivial por enumeración (cambiar el número). Ni el pipeline ni Checkov detectan este riesgo.
 7. **De respuesta — la mitigación quedó fuera del código.** Se bloqueó desde la consola sin modificar `infra/` (drift entre lo declarado y lo real), y esa acción cortó el acceso del proveedor sin una alternativa preparada.
 
@@ -67,7 +67,7 @@ Qué funcionó:
 
 Qué no funcionó:
 
-- No hubo ninguna alerta ni registro de acceso en 62 h 20 min de exposición; la detección dependió de un cliente.
+- No hubo ninguna alerta ni registro de acceso en 63 h 25 min de exposición; la detección dependió de un cliente.
 - La revisión del cambio se pidió pero no se hizo antes de publicarlo.
 - La mitigación manual no quedó reflejada en el código, y el proveedor perdió el acceso sin un plan.
 - No se pudo medir el alcance del incidente por falta de registros.
