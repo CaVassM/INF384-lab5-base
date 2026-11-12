@@ -32,6 +32,7 @@ Existe riesgo de exposición de información financiera de los usuarios.
 ### Línea de tiempo
 
 | Fecha y hora | Hecho |
+|---|---|
 | Jue 05/11 15:10 | El área comercial informa que el proveedor de conciliación debe leer los comprobantes desde el viernes 06/11. El contrato tiene penalidad por cada día de retraso. |
 | Vie 06/11 09:30 | La tarea se asigna a un desarrollador backend. |
 | Vie 06/11 16:20 | El desarrollador pide al proveedor el identificador de su cuenta de AWS. No recibe respuesta. |
@@ -101,30 +102,43 @@ Qué no funcionó:
 
 ### Decisión 1 · Qué bloquea y qué informa
 
-- Decisión:
-- Dato del repositorio que la sustenta:
-- Alternativa descartada y por qué:
-- Posición en minoría:
+- Decisión: Se establece una política de seguridad diferenciada. Checkov bloqueará los hallazgos que permitan el acceso público al bucket de comprobantes S3, especialmente `CKV_AWS_53`, `CKV_AWS_54`, `CKV_AWS_55`, `CKV_AWS_56` y `CKV_AWS_70`. Los demás hallazgos se informarán, salvo aquellos que el equipo incorpore expresamente a la política bloqueante. Trivy bloqueará vulnerabilidades HIGH y CRITICAL con versión corregida disponible. Las vulnerabilidades sin parche se reportarán y recibirán el tratamiento establecido en la Decisión 2.
+- Dato del repositorio que la sustenta: Se ejecutó Checkov 3.4.5 sobre `infra/`, obteniéndose 20 checks aprobados, 28 fallidos y 0 omitidos. Entre los hallazgos bloqueantes detectados se encuentran `CKV_AWS_55`, por la desactivación de `ignore_public_acls`, y `CKV_AWS_70`, por una política S3 con `Principal = "*"`. El job `iac` terminó con exit code 1, demostrando que la política bloqueante funciona. Trivy sobre `package-lock.json` reportó [COMPLETAR: N hallazgos en total, N HIGH/CRITICAL con versión corregida, e ID de cada uno].
+- Alternativa descartada y por qué: Se descarta bloquear todos los hallazgos de Checkov, debido a que algunos corresponden a mejoras de seguridad no directamente relacionadas con el incidente y requieren evaluación adicional. También se descarta tratar todos los hallazgos como informativos, porque permitiría que una configuración pública de S3 pase el pipeline sin detenerse.
+- Posición en minoría: El abogado del diablo sostiene que bloquear solo el acceso público es insuficiente. Entre los 28 hallazgos informativos hay controles directamente ligados al incidente, como el registro de acceso del bucket (cuya ausencia impidió medir cuántos comprobantes se descargaron, causa 5 del postmortem). Al quedar como informativos, la misma situación podría repetirse sin que el pipeline la detenga. Propone ampliar la lista bloqueante a esos controles.
 
 ### Decisión 2 · La vulnerabilidad sin versión corregida
 
-- Decisión:
-- Dato del repositorio que la sustenta:
-- Alternativa descartada y por qué:
-- Posición en minoría:
+- Decisión: Dejamos de usar la librería `ip` y la reemplazamos por la función que ya trae Node (`net.BlockList`). El pipeline sigue bloqueando las vulnerabilidades HIGH y CRITICAL que tienen versión corregida; las que no tienen parche se informan.
+- Dato del repositorio que la sustenta: Trivy encontró la vulnerabilidad CVE-2024-29415 en `ip` versión 2.0.1, y no existe una versión que la corrija. La usamos en `src/notificaciones.js`, en la función `validarUrlNotificacion` (línea 20). Esa función revisa que la URL que registra un comercio no apunte a nuestra red interna. Con este fallo, un atacante podría saltarse esa revisión.
+- Alternativa descartada y por qué: Bloquear los despliegues hasta que salga un parche no sirve, porque no sabemos si alguna vez saldrá, y la API quedaría congelada. Abrir una excepción tampoco, porque la falla seguiría en el único filtro que protege esa función. Reemplazar la librería es lo más simple: solo se usa en un lugar.
+- Posición en minoría: Abrir una excepción de 30 días con control compensatorio, para no tocar `src/` bajo la presión de tiempo del laboratorio. Se descarta porque el reemplazo afecta una sola función y las pruebas de `test/notificaciones.test.js` permiten verificar que el comportamiento se mantiene.
 
 ### Decisión 3 · La Function URL sin autenticación
 
-- Decisión:
-- Dato del repositorio que la sustenta:
-- Alternativa descartada y por qué:
-- Posición en minoría:
+- Decisión: Abrir una excepción de duración limitada para la Function URL sin autenticación y no corregir en esta sesión. `CKV_AWS_258` se incorpora expresamente a la política bloqueante de la Decisión 1, por lo que la excepción se escribe en `infra/lambda.tf` con `#checkov:skip=CKV_AWS_258` y los cuatro datos: responsable (Líder técnico), vencimiento (12/12/2026), control compensatorio (autenticación de usuarios en el servicio externo al repositorio, a confirmar, más monitoreo de invocaciones) y riesgo aceptado (cualquier persona con la URL puede invocar los endpoints de la API sin autenticación de AWS).
+- Dato del repositorio que la sustenta: `CKV_AWS_258` sobre el recurso `aws_lambda_function_url.api` (`infra/lambda.tf`, líneas 27-30; `authorization_type = "NONE"` en la línea 29).
+- Alternativa descartada y por qué: Corregir cambiando a `AWS_IAM`. Con `AWS_IAM` los llamadores deben ser principales IAM autenticados, y la app móvil consume la URL directamente sin credenciales de AWS, por lo que el cambio la dejaría sin servicio mientras se resuelve el incidente del proveedor. La app no está en este repositorio y no se puede modificar en la sesión.
+- Posición en minoría: Corregir hoy con `AWS_IAM` y coordinar la actualización de la app móvil, porque `src/handler.js` no valida identidad en `/saldo`, `/historial` ni `/transferir` y el control compensatorio externo no se puede verificar desde el repositorio. Se descarta por el riesgo de dejar la app sin servicio, y se mitiga con el vencimiento corto y la revisión de la excepción.
 
 ## A3 · Dato nuevo
 
-- Qué cambia en el postmortem:
+Dato recibido a las 16:40: el proveedor de conciliación exige acceso hoy y cobra S/ 15 000 por cada día sin acceso. Gerencia pide el nombre de quien hizo el cambio para sancionarlo.
+
+ - **Impacto:** se agrega la penalidad de S/ 15 000 por día sin acceso. Contando desde el corte del 09/11 a las 09:25, serían S/ 45 000 (3 días completos) o S/ 60 000 (4 días calendario) al 12/11; la forma de contar se confirma en el contrato. El incidente deja de ser solo de confidencialidad y pasa a tener un costo económico que crece cada día.
+  - **Causas:** la causa de presión de plazo sin camino alternativo gana peso. La penalidad contractual que empujó el atajo del viernes vuelve a actuar hoy con una cifra mayor. No se agrega ninguna causa atribuida a una persona.
+  - **Línea de tiempo:** se agrega el hecho del 12/11 a las 16:40 y el intervalo de restauración sigue abierto hasta que el proveedor recupere el acceso por una vía segura.
+  - **Acciones:** la corrección de `infra/s3.tf` pasa a ser una acción de hoy, con plazo antes de las 18:00 y revisión por pull request. Se agrega la acción de presentar a Gerencia un informe sin atribución personal y acordar con ella una regla de revisión de incidentes.
+
 - Qué cambia en las decisiones:
+  - **Decisión 1 (qué bloquea y qué informa):** no cambia la lista. Se refuerza que la urgencia no autoriza saltarse el pipeline: el job `iac` sigue bloqueando el bucket público y el acceso del proveedor se resuelve con un principal específico, no con una excepción.
+  - **Decisión 2 (vulnerabilidad sin versión corregida):** no cambia. La presión de tiempo no justifica reemplazar la librería `ip` sin pasar las pruebas unitarias; si no pasan a tiempo, se cambia a excepción antes de las 17:20.
+  - **Decisión 3 (Function URL):** no cambia. Corregir a `AWS_IAM` hoy dejaría sin servicio a la app móvil mientras ya hay una crisis abierta con el proveedor, y duplicaría el riesgo. Sigue la excepción con vencimiento.
+  - **Decisión operativa nueva:** restablecer hoy el acceso del proveedor con un cambio en `infra/s3.tf` que activa el bloqueo de acceso público y otorga lectura solo al rol `conciliacion-lectura` de la cuenta 111122223333. Se hace por pull request y con `unit`, `iac` y `sca` en verde. Alternativa descartada: reabrir el bucket temporalmente o aplicar directo a `main` para cumplir el plazo, porque repetiría la causa del incidente. Posición en minoría: aplicar el cambio de inmediato para frenar la penalidad, descartada por el mismo motivo.
+
 - Respuesta del equipo al pedido recibido:
+  - **Acceso del proveedor:** el equipo restablece el acceso hoy por una vía segura, sin abrir el bucket, con el rol `conciliacion-lectura`. Se informa a Gerencia el plan y la hora estimada de restablecimiento.
+  - **Nombre de quien hizo el cambio:** el equipo no entrega un nombre. En este postmortem las personas se mencionan por su rol. El cambio llegó a producción por una cadena de condiciones del sistema: `main` sin protección, revisión por chat diferida al lunes, `terraform apply` manual desde una laptop, CI sin análisis de `infra/` y ausencia de monitoreo del bucket. Sancionar a una persona no corrige ninguna de esas condiciones, y la siguiente persona bajo la misma presión repetiría el cambio. Además, castigar por el nombre desalienta reportar problemas a tiempo. Lo que el equipo ofrece a Gerencia es el informe con las condiciones del sistema, los roles que intervinieron, las acciones con responsable y fecha, y el avance de cada una. Si Gerencia necesita revisar responsabilidades individuales, es un asunto aparte del postmortem que debe tratarse con el contexto completo, incluida la aprobación por chat del líder técnico.
 
 ## Parte B · Evidencia
 
