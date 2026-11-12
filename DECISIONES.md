@@ -6,11 +6,11 @@ Número de equipo:
 
 | Código PUCP | Nombre | Rol | Usuario de GitHub |
 |---|---|---|---|
-| | | Moderador | |
-| | | Escriba | |
-| | | Abogado del diablo | |
+| 20211041 | Daniel Marcel Malca Lopez | Moderador | D4rkPatata |
+| 20171857 | Christian Sebastian Chira Mallqui | Escriba | Setziret |
+| 20202583 | Carlos Vazques Morales | Abogado del diablo | CaVassM |
 | 20206234 | Jorge Josue Chamorro Cayetano | Guardián del tiempo | darkJCdark |
-| | | Integrador | |
+| 20210477 | Kei Shimabukuro Kohatsu | Integrador | Ryoukyougan22 |
 
 ## A1 · Postmortem
 
