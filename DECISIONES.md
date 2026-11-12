@@ -9,7 +9,7 @@ Número de equipo:
 | | | Moderador | |
 | | | Escriba | |
 | | | Abogado del diablo | |
-| | | Guardián del tiempo | |
+| 20206234 | Jorge Josue Chamorro Cayetano | Guardián del tiempo | darkjcdark |
 | | | Integrador | |
 
 ## A1 · Postmortem
